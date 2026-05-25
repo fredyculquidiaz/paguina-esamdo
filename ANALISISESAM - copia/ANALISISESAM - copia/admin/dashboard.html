@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ESAM-DO Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 px-0 sidebar">
+                <div class="text-center py-4">
+                    <i class="fas fa-fist-raised fa-3x text-danger"></i>
+                    <h5 class="mt-2">ESAM-DO</h5>
+                    <small>Panel Admin</small>
+                </div>
+                <nav class="nav flex-column px-3">
+                    <a class="nav-link active" href="dashboard.html">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="estudiantes.html">
+                        <i class="fas fa-users"></i> Estudiantes
+                    </a>
+                    <a class="nav-link" href="pagos.html">
+                        <i class="fas fa-dollar-sign"></i> Pagos
+                    </a>
+                    <a class="nav-link" href="asistencia.html">
+                        <i class="fas fa-calendar-check"></i> Asistencia
+                    </a>
+                    <a class="nav-link" href="inventario.html">
+                        <i class="fas fa-boxes"></i> Inventario
+                    </a>
+                    <a class="nav-link" href="reportes.html">
+                        <i class="fas fa-chart-bar"></i> Reportes
+                    </a>
+                </nav>
+                <div class="position-absolute bottom-0 w-100 p-3">
+                    <button onclick="logout()" class="btn btn-outline-danger w-100">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-4 py-3">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+                    <div id="userInfo" class="text-muted"></div>
+                </div>
+                
+                <div id="alertContainer"></div>
+                
+                <!-- Stats Cards -->
+                <div class="row" id="statsCards">
+                    <div class="col-md-3">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <h2 id="totalEstudiantes">0</h2>
+                            <p>Estudiantes Activos</p>
+                            <i class="fas fa-users fa-2x position-absolute bottom-0 end-0 me-3 mb-3 opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                            <h2 id="ingresosMes">S/ 0</h2>
+                            <p>Ingresos del Mes</p>
+                            <i class="fas fa-chart-line fa-2x position-absolute bottom-0 end-0 me-3 mb-3 opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <h2 id="asistenciaHoy">0</h2>
+                            <p>Asistencias Hoy</p>
+                            <i class="fas fa-calendar-check fa-2x position-absolute bottom-0 end-0 me-3 mb-3 opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <h2 id="morosos">0</h2>
+                            <p>Estudiantes Morosos</p>
+                            <i class="fas fa-exclamation-triangle fa-2x position-absolute bottom-0 end-0 me-3 mb-3 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white">Ingresos por Mes</div>
+                            <div class="card-body">
+                                <canvas id="ingresosChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white">Niveles de Estudiantes</div>
+                            <div class="card-body">
+                                <canvas id="nivelesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/main.js"></script>
+    <script src="../js/estudiantes.js"></script>
+    <script src="../js/pagos.js"></script>
+    <script src="../js/asistencia.js"></script>
+    <script>
+        // Verificar autenticación
+        if (!requireAdmin()) {
+            throw new Error('Acceso denegado');
+        }
+        
+        const user = getCurrentUser();
+        document.getElementById('userInfo').innerHTML = `<i class="fas fa-user-circle"></i> ${user.nombre} <small class="text-muted">(${user.rol})</small>`;
+        
+        // Cargar estadísticas
+        function loadStats() {
+            const estudiantes = getEstudiantes();
+            const activos = estudiantes.filter(e => e.estado === 'activo').length;
+            document.getElementById('totalEstudiantes').innerText = activos;
+            
+            const pagos = getPagos();
+            const mesActual = new Date().getMonth() + 1;
+            const ingresos = pagos
+                .filter(p => p.estado === 'pagado' && new Date(p.fecha).getMonth() + 1 === mesActual)
+                .reduce((sum, p) => sum + p.monto, 0);
+            document.getElementById('ingresosMes').innerHTML = formatMoney(ingresos);
+            
+            const asistencia = getAsistencia();
+            const hoy = new Date().toISOString().split('T')[0];
+            const asistenciasHoy = asistencia.filter(a => a.fecha === hoy && a.estado !== 'falta').length;
+            document.getElementById('asistenciaHoy').innerText = asistenciasHoy;
+            
+            const morosos = estudiantes.filter(e => e.estado === 'moroso').length;
+            document.getElementById('morosos').innerText = morosos;
+        }
+        
+        // Gráfico de ingresos
+        function loadIngresosChart() {
+            const pagos = getPagos();
+            const ingresosPorMes = Array(12).fill(0);
+            
+            pagos.filter(p => p.estado === 'pagado').forEach(p => {
+                const mes = new Date(p.fecha).getMonth();
+                ingresosPorMes[mes] += p.monto;
+            });
+            
+            new Chart(document.getElementById('ingresosChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                    datasets: [{
+                        label: 'Ingresos',
+                        data: ingresosPorMes,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220,53,69,0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+        
+        // Gráfico de niveles
+        function loadNivelesChart() {
+            const estudiantes = getEstudiantes();
+            const niveles = {};
+            const nivelOrden = ['blanco', 'amarillo', 'naranja', 'verde', 'azul', 'marrón', 'negro'];
+            const nivelNombre = {
+                'blanco': 'Blanco', 'amarillo': 'Amarillo', 'naranja': 'Naranja',
+                'verde': 'Verde', 'azul': 'Azul', 'marrón': 'Marrón', 'negro': 'Negro'
+            };
+            
+            estudiantes.forEach(e => {
+                niveles[e.nivel] = (niveles[e.nivel] || 0) + 1;
+            });
+            
+            new Chart(document.getElementById('nivelesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: nivelOrden.map(n => nivelNombre[n]),
+                    datasets: [{
+                        data: nivelOrden.map(n => niveles[n] || 0),
+                        backgroundColor: ['#6c757d', '#ffc107', '#fd7e14', '#198754', '#0dcaf0', '#795548', '#212529']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+        
+        // Inicializar
+        loadStats();
+        loadIngresosChart();
+        loadNivelesChart();
+    </script>
+</body>
+</html>
